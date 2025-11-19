@@ -54,14 +54,50 @@ const ChatInterface = () => {
     setIsLoading(true);
 
     try {
-      // TODO: Replace with actual AI endpoint once Lovable Cloud is enabled
-      // For now, simulate a response
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({
+            messages: [
+              ...messages.map((msg) => ({
+                role: msg.isUser ? "user" : "assistant",
+                content: msg.content,
+              })),
+              { role: "user", content: messageText },
+            ],
+          }),
+        }
+      );
 
+      if (!response.ok) {
+        if (response.status === 429) {
+          toast({
+            title: "Whoa there! 🎈",
+            description: "I'm getting a bit overwhelmed! Let's slow down just a tiny bit.",
+            variant: "destructive",
+          });
+          return;
+        }
+        if (response.status === 402) {
+          toast({
+            title: "Oops! 💳",
+            description: "Looks like we need to add some credits. Please contact support!",
+            variant: "destructive",
+          });
+          return;
+        }
+        throw new Error("Failed to get response");
+      }
+
+      const data = await response.json();
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
-        content:
-          "This is a placeholder response! Once we connect Lovable AI, I'll be your fun, lovable companion! 🎈✨",
+        content: data.message,
         isUser: false,
       };
 
